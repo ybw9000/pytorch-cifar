@@ -1,13 +1,9 @@
 from __future__ import print_function
 from PIL import Image
 import os
-import os.path
 import numpy as np
 import sys
-if sys.version_info[0] == 2:
-    import cPickle as pickle
-else:
-    import pickle
+import pickle
 
 import torch.utils.data as data
 from torchvision.datasets.utils import download_url, check_integrity
@@ -187,6 +183,7 @@ class CIFAR100(CIFAR10):
         'key': 'fine_label_names',
         'md5': '7973b15100ade9c7d40fb424638fde48',
     }
+
 
 class ImbalancedCifar(CIFAR10):
 

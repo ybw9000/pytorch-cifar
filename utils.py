@@ -6,11 +6,65 @@
 import os
 import sys
 import time
-import math
+import argparse
 import torch
 
 import torch.nn as nn
 import torch.nn.init as init
+
+
+def get_args():
+    parser = argparse.ArgumentParser(description='PyTorch CIFAR10 Training')
+    parser.add_argument('-e', '--epochs', default=10, type=int,
+                        help="Number of epochs")
+    parser.add_argument('-b', '--batch_size', default=64, type=int,
+                        help="batch_size")
+    parser.add_argument('--lr', default=0.1, type=float, help='learning rate')
+    parser.add_argument('-r', '--resume', action='store_true',
+                        help='resume from checkpoint')
+    parser.add_argument('--checkpoint', default='checkpoint/best_model',
+                        type=str, help='model to resume from')
+    parser.add_argument('-p', '--print', default=-1, type=int,
+                        help='print results per p epochs')
+    parser.add_argument('-ds', '--decay_step', default=50, type=int,
+                        help='learning rate decays by every ds epochs')
+    parser.add_argument('--gamma', default=0.1, type=float,
+                        help='learning rate decay rate')
+    parser.add_argument('--device', default='cpu', type=str,
+                        help='use gpu or cpu')
+    parser.add_argument('--model_path', default='checkpoint/best_model',
+                        type=str, help='path to save model')
+    parser.add_argument('-pt', '--pretrain', action='store_true',
+                        help='turn on pretrain learning')
+    args = parser.parse_args()
+
+    return args
+
+
+class Printer(object):
+
+    def __init__(self, total_loss=0, total=0, correct=0, batch_idx=0):
+        self.total_loss = total_loss
+        self.total = total
+        self.correct = correct
+        self.batch_idx = batch_idx
+
+    def update(self, loss, outputs, targets):
+        self.total_loss += loss.item()
+        _, predicted = outputs.max(1)
+        self.total += targets.size(0)
+        self.correct += predicted.eq(targets).sum().item()
+        self.batch_idx += 1
+
+    def acc(self):
+        return self.correct/self.total*100
+
+    def loss(self):
+        return self.total_loss/self.batch_idx
+
+    def __str__(self):
+        assert self.batch_idx > 0, 'No data stored in printer'
+        return 'Loss: {} | Acc: {}%'.format(self.loss(), self.acc())
 
 
 def get_mean_and_std(dataset):
