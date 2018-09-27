@@ -1,6 +1,4 @@
 '''Train CIFAR10 with PyTorch.'''
-from __future__ import print_function
-
 import numpy as np
 
 import torch
@@ -8,6 +6,7 @@ import torch.nn as nn
 import torch.optim as optim
 import torch.backends.cudnn as cudnn
 from torch.optim.lr_scheduler import StepLR
+from torch.utils.data import DataLoader
 
 import torchvision.transforms as transforms
 from cifar import ImbalancedCifar
@@ -16,11 +15,11 @@ from tqdm import tqdm
 import os
 import warnings
 
-from models import ResNet18
+from models.resnet import ResNet18
 from utils import get_args, Printer
 
 
-def train(args, model, trainloader, criterion, optimizer, scheduler):
+def train(args, model, trainloader, criterion, optimizer, scheduler) -> None:
     model.train()
     printer = Printer()
     for epoch in tqdm(range(args.epochs), total=args.epochs):
@@ -39,7 +38,7 @@ def train(args, model, trainloader, criterion, optimizer, scheduler):
             print(printer)
 
 
-def test(args, model, testloader, criterion):
+def test(args, model, testloader, criterion) -> Printer:
     model.eval()
     printer = Printer()
     with torch.no_grad():
@@ -55,7 +54,7 @@ def test(args, model, testloader, criterion):
     return printer
 
 
-def save_model(args, model, acc, epoch):
+def save_model(args, model, acc: float, epoch: int) -> None:
     if os.path.isfile(args.model_path):
         warnings.warn(message="Model already exists, overwriting models..")
     print(f'Saving model to {args.model_path}')
@@ -67,15 +66,16 @@ def save_model(args, model, acc, epoch):
     torch.save(state, args.model_path)
 
 
-def prepare_dataset(args, path, distribution, percentage):
+def prepare_dataset(args, path: str, distribution: np.ndarray,
+                    percentage: float) -> tuple:
     # classes = ('plane', 'car', 'bird', 'cat', 'deer',
     #            'dog', 'frog', 'horse', 'ship', 'truck')
     print('==> Preparing data..')
 
-    def prepare_dataloader(transform, idx, train):
+    def prepare_dataloader(transform, idx: list, train: bool) -> DataLoader:
         trainset = ImbalancedCifar(root=path, train=train, download=True,
                                    transform=transform, idx=idx)
-        trainloader = torch.utils.data.DataLoader(
+        trainloader = DataLoader(
             trainset, batch_size=args.batch_size, shuffle=train, num_workers=2)
         return trainloader
 
@@ -88,10 +88,14 @@ def prepare_dataset(args, path, distribution, percentage):
         transforms.RandomHorizontalFlip(),
         transform_test
     ])
+
+    # Generate indexes to split the datasets into two parts
     train_idx1, train_idx2 = ImbalancedCifar.generate_idx(
         distribution=distribution*percentage*2, samples=5000)
+    # print(list(map(len, train_idx1)), list(map(len, train_idx2)))
     test_idx1, test_idx2 = ImbalancedCifar.generate_idx(
         distribution=distribution, samples=1000)
+    # print(list(map(len, test_idx1)), list(map(len, test_idx2)))
     arguments = [
         [transform_train, train_idx1, True],
         [transform_train, train_idx2, True],
@@ -100,16 +104,19 @@ def prepare_dataset(args, path, distribution, percentage):
     ]
     dataloaders = map(lambda x: prepare_dataloader(*x), arguments)
 
-    return dataloaders
+    return tuple(dataloaders)
 
 
-def main():
+def main() -> None:
     args = get_args()
     assert args.device is 'cpu' or torch.cuda.is_available(), 'gpu unavailable'
+
     model = ResNet18().to(args.device)
     if args.device == 'cuda':
-        model = torch.nn.DataParallel(model)
         cudnn.benchmark = True
+    if args.multigpu:
+        model = torch.nn.DataParallel(model)
+
     best_acc = 0
     start_epoch = 0
     if args.resume:
@@ -122,8 +129,12 @@ def main():
         start_epoch = checkpoint['epoch']
         for params in model.parameters():
             params.requires_grad = False
-        for params in model.linear.parameters():
-            params.requires_grad_()
+        if args.multigpu:
+            for params in model.module.linear.parameters():
+                params.requires_grad_()
+        else:
+            for params in model.linear.parameters():
+                params.requires_grad_()
 
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.SGD(filter(lambda x: x.requires_grad, model.parameters()),
@@ -133,15 +144,21 @@ def main():
 
     np.random.seed(3)
     distribution = np.random.rand(10)
-    trainloader1, trainloader2, testloader1, testloader2 = prepare_dataset(
-        args, path='data', distribution=distribution, percentage=0.1)
+    print("Unbalanced distribution:", distribution, sep='\n')
+
+    dataloaders = prepare_dataset(
+        args, path='./data', distribution=distribution, percentage=0.1)
+    trainloader1, trainloader2, testloader1, testloader2 = dataloaders
+    print('pretrain: {}\npretest:{}\nsmartrain: {}\nsmartest: {}'.format(
+        *map(lambda x: str(len(x)) + ' batches', dataloaders)))
+
     if args.pretrain:
         trainloader, testloader = trainloader2, testloader2
     else:
         trainloader, testloader = trainloader1, testloader1
     train(args, model, trainloader, criterion, optimizer, step_lr)
     result = test(args, model, testloader, criterion)
-    save_model(args, model, result.acc, start_epoch + args.epochs)
+    save_model(args, model, result.acc(), start_epoch + args.epochs)
 
 
 if __name__ == '__main__':

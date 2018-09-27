@@ -1,13 +1,13 @@
-from .vgg import *
-from .dpn import *
-from .lenet import *
-from .senet import *
-from .pnasnet import *
-from .densenet import *
-from .googlenet import *
-from .shufflenet import *
-from .resnet import *
-from .resnext import *
-from .preact_resnet import *
-from .mobilenet import *
-from .mobilenetv2 import *
+import models.vgg
+import models.dpn
+import models.lenet
+import models.senet
+import models.pnasnet
+import models.densenet
+import models.googlenet
+import models.shufflenet
+import models.resnet
+import models.resnext
+import models.preact_resnet
+import models.mobilenet
+import models.mobilenetv2

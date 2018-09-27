@@ -36,6 +36,8 @@ def get_args():
                         type=str, help='path to save model')
     parser.add_argument('-pt', '--pretrain', action='store_true',
                         help='turn on pretrain learning')
+    parser.add_argument('--multigpu', action='store_true',
+                        help='turn on multi gpu')
     args = parser.parse_args()
 
     return args
@@ -56,10 +58,10 @@ class Printer(object):
         self.correct += predicted.eq(targets).sum().item()
         self.batch_idx += 1
 
-    def acc(self):
+    def acc(self) -> float:
         return self.correct/self.total*100
 
-    def loss(self):
+    def loss(self) -> float:
         return self.total_loss/self.batch_idx
 
     def __str__(self):
@@ -80,6 +82,7 @@ def get_mean_and_std(dataset):
     mean.div_(len(dataset))
     std.div_(len(dataset))
     return mean, std
+
 
 def init_params(net):
     '''Init layer parameters.'''
@@ -103,6 +106,8 @@ term_width = int(term_width)
 TOTAL_BAR_LENGTH = 65.
 last_time = time.time()
 begin_time = last_time
+
+
 def progress_bar(current, total, msg=None):
     global last_time, begin_time
     if current == 0:
@@ -145,6 +150,7 @@ def progress_bar(current, total, msg=None):
     else:
         sys.stdout.write('\n')
     sys.stdout.flush()
+
 
 def format_time(seconds):
     days = int(seconds / 3600/24)
