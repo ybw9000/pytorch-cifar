@@ -149,7 +149,7 @@ def main() -> None:
     dataloaders = prepare_dataset(
         args, path='./data', distribution=distribution, percentage=0.1)
     trainloader1, trainloader2, testloader1, testloader2 = dataloaders
-    print('pretrain: {}\npretest:{}\nsmartrain: {}\nsmartest: {}'.format(
+    print('smartrain: {}\npretrain:{}\nsmartest: {}\npretest: {}'.format(
         *map(lambda x: str(len(x)) + ' batches', dataloaders)))
 
     if args.pretrain:
