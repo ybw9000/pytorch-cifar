@@ -114,7 +114,8 @@ def main() -> None:
         'resnet18': ResNet18,
         'resnet16': ResNet16,
         'resnet14': ResNet14,
-        'resnet10': ResNet10
+        'resnet10': ResNet10,
+        'resnet8': ResNet8
     }
     assert args.device == 'cpu' or torch.cuda.is_available(), 'gpu unavailable'
 
