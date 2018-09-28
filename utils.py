@@ -38,9 +38,15 @@ def get_args():
                         help='turn on pretrain learning')
     parser.add_argument('--multigpu', action='store_true',
                         help='turn on multi gpu')
+    parser.add_argument('--model', default='resnet18', type=str,
+                        help='which model to use')
     args = parser.parse_args()
 
     return args
+
+
+def get_param_size(model) -> int:
+    return sum(p.numel() for p in model.parameters())
 
 
 class Printer(object):

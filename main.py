@@ -15,8 +15,8 @@ from tqdm import tqdm
 import os
 import warnings
 
-from models.resnet import ResNet18
-from utils import get_args, Printer
+from models.resnet import *
+from utils import get_args, Printer, get_param_size
 
 
 def train(args, model, trainloader, criterion, optimizer, scheduler) -> None:
@@ -60,6 +60,7 @@ def save_model(args, model, acc: float, epoch: int) -> None:
     print(f'Saving model to {args.model_path}')
     state = {
         'model': model.state_dict(),
+        'num_paras': get_param_size(model),
         'acc': acc,
         'epoch': epoch
     }
@@ -109,13 +110,20 @@ def prepare_dataset(args, path: str, distribution: np.ndarray,
 
 def main() -> None:
     args = get_args()
-    assert args.device is 'cpu' or torch.cuda.is_available(), 'gpu unavailable'
+    model_zoo = {
+        'resnet18': ResNet18,
+        'resnet16': ResNet16,
+        'resnet14': ResNet14,
+        'resnet10': ResNet10
+    }
+    assert args.device == 'cpu' or torch.cuda.is_available(), 'gpu unavailable'
 
-    model = ResNet18().to(args.device)
-    if args.device == 'cuda':
-        cudnn.benchmark = True
+    model = model_zoo[args.model]().to(args.device)
+    print("Total number of parameters: ", get_param_size(model))
+
     if args.multigpu:
         model = torch.nn.DataParallel(model)
+        cudnn.benchmark = True
 
     best_acc = 0
     start_epoch = 0
