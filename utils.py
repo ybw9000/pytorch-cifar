@@ -72,7 +72,7 @@ class Printer(object):
 
     def __str__(self):
         assert self.batch_idx > 0, 'No data stored in printer'
-        return 'Loss: {} | Acc: {}%'.format(self.loss(), self.acc())
+        return 'Loss: {:.3f} | Acc: {:.3f}%'.format(self.loss(), self.acc())
 
 
 def get_mean_and_std(dataset):

@@ -13,6 +13,7 @@ from cifar import ImbalancedCifar
 from tqdm import tqdm
 
 import os
+from sys import stdout
 import warnings
 
 from models.resnet import *
@@ -22,8 +23,8 @@ from utils import get_args, Printer, get_param_size
 def train(args, model, trainloader, criterion, optimizer, scheduler) -> None:
     model.train()
     printer = Printer()
-    for epoch in tqdm(range(args.epochs), total=args.epochs):
-        print('\nEpoch: %d' % epoch)
+    pbar = tqdm(range(args.epochs), total=args.epochs)
+    for epoch in pbar:
         scheduler.step()
         for batch_idx, (inputs, targets) in enumerate(trainloader):
             inputs, targets = inputs.to(args.device), targets.to(args.device)
@@ -34,8 +35,8 @@ def train(args, model, trainloader, criterion, optimizer, scheduler) -> None:
             optimizer.step()
             printer.update(loss, outputs, targets)
 
-        if epoch % args.print == 0:
-            print(printer)
+        # if epoch % args.print == 0:
+        pbar.set_description(f'Epoch: {epoch}, {printer}')
 
 
 def test(args, model, testloader, criterion) -> Printer:
@@ -115,11 +116,13 @@ def main() -> None:
         'resnet16': ResNet16,
         'resnet14': ResNet14,
         'resnet10': ResNet10,
-        'resnet8': ResNet8
+        'resnet8': ResNet8,
+        'resnet6': ResNet6,
     }
     assert args.device == 'cpu' or torch.cuda.is_available(), 'gpu unavailable'
 
     model = model_zoo[args.model]().to(args.device)
+    print(model)
     print("Total number of parameters: ", get_param_size(model))
 
     if args.multigpu:
