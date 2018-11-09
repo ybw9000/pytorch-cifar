@@ -38,12 +38,12 @@ def get_args():
                         type=str, help='path to save model')
     parser.add_argument('-pt', '--pretrain', action='store_true',
                         help='turn on pretrain learning')
-    parser.add_argument('--multigpu', action='store_true',
-                        help='turn on multi gpu')
     parser.add_argument('--model', default='resnet18', type=str,
                         help='which model to use')
     parser.add_argument('--split', default=5, type=int,
                         help='how to split the dataset, default 5 to 5')
+    parser.add_argument('--smi_size', default=1000, type=int,
+                        help='how many images used for smart inference')
     args = parser.parse_args()
 
     return args

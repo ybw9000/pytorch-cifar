@@ -76,11 +76,10 @@ def prepare_dataset(args, path: str) -> tuple:
     # classes = ('plane', 'car', 'bird', 'cat', 'deer',
     #            'dog', 'frog', 'horse', 'ship', 'truck')
     print('==> Preparing data..')
-    split = args.split
 
-    def prepare_dataloader(transform, split: int, train: bool) -> DataLoader:
-        trainset = CifarN(root=path, train=train, download=True,
-                          transform=transform, N=split)
+    def prepare_dataloader(transform, train: bool) -> DataLoader:
+        trainset = CifarN(root=path, args=args, train=train, download=True,
+                          transform=transform)
         trainloader = DataLoader(
             trainset, batch_size=args.batch_size, shuffle=train, num_workers=4)
         return trainloader
@@ -97,10 +96,8 @@ def prepare_dataset(args, path: str) -> tuple:
     ])
 
     arguments = [
-        [transform_train, split, True],
-        [transform_train, -split, True],
-        [transform_test, split, False],
-        [transform_test, -split, False]
+        [transform_train, True],
+        [transform_test, False],
     ]
     dataloaders = map(lambda x: prepare_dataloader(*x), arguments)
 
@@ -119,13 +116,7 @@ def main() -> None:
     }
     assert args.device == 'cpu' or torch.cuda.is_available(), 'gpu unavailable'
 
-    N = args.split
     model = model_zoo[args.model]()
-    model.linear = nn.Linear(in_features=128, out_features=N)
-
-    if args.multigpu:
-        model = torch.nn.DataParallel(model)
-        cudnn.benchmark = True
 
     start_epoch = 0
     if args.resume or args.transfer:
@@ -138,18 +129,13 @@ def main() -> None:
         if args.transfer:
             for params in model.parameters():
                 params.requires_grad = False
-            # requires_grad is True by default for newly init layers/modules
-            model.linear = nn.Linear(in_features=128, out_features=10 - N)
+            for params in model.linear.parameters():
+                params.requires_grad = True
 
     dataloaders = prepare_dataset(args, path='./data')
-    trainloader1, trainloader2, testloader1, testloader2 = dataloaders
-    print('pretrain: {}\nsmartrain:{}\npretest: {}\nsmartest: {}'.format(
+    trainloader, testloader = dataloaders
+    print('train: {}\ntest: {}'.format(
         *map(lambda x: str(len(x)) + ' batches', dataloaders)))
-
-    if args.pretrain:
-        trainloader, testloader = trainloader1, testloader1
-    else:
-        trainloader, testloader = trainloader2[:1000], testloader2[:1000]
 
     # Prepare trainer utils
     criterion = nn.CrossEntropyLoss()

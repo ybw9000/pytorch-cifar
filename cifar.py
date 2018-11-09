@@ -210,15 +210,22 @@ class ImbalancedCifar(CIFAR10):
 
 class CifarN(CIFAR10):
 
-    def __init__(self, root, train=True,
+    def __init__(self, root, args, train=True,
                  transform=None, target_transform=None,
-                 download=False, N=8):
+                 download=False):
         super().__init__(root, train=train, transform=transform,
                          target_transform=target_transform, download=download)
-        self._split_data(N)
+        self.args = args
+        self._split_data()
 
-    def _split_data(self, N):
+    def _split_data(self):
         tgts = np.array(self.targets)
-        mask = tgts < N if N >= 0 else tgts >= - N
-        self.data = self.data[mask]
-        self.targets = list(tgts[mask] + (N if N < 0 else 0))
+        N = self.args.split
+        if self.args.transfer:
+            mask = tgts >= N
+            self.data = self.data[mask][:self.args.smi_size]
+            self.targets = list(tgts[mask][:self.args.smi_size])
+        else:
+            mask = (tgts < N)
+            self.data = self.data[mask]
+            self.targets = list(tgts[mask])
