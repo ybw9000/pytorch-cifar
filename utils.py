@@ -22,6 +22,8 @@ def get_args():
     parser.add_argument('--lr', default=0.1, type=float, help='learning rate')
     parser.add_argument('-r', '--resume', action='store_true',
                         help='resume from checkpoint')
+    parser.add_argument('-t', '--transfer', action='store_true',
+                        help='transfer learning with feature extraction')
     parser.add_argument('--checkpoint', default='checkpoint/best_model',
                         type=str, help='model to resume from')
     parser.add_argument('-p', '--print', default=-1, type=int,

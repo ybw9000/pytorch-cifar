@@ -13,7 +13,6 @@ from cifar import ImbalancedCifar
 from tqdm import tqdm
 
 import os
-from sys import stdout
 import warnings
 
 from models.resnet import *
@@ -21,7 +20,11 @@ from utils import get_args, Printer, get_param_size
 
 
 def train(args, model, trainloader, criterion, optimizer, scheduler) -> None:
-    model.train()
+    if args.transfer:
+        print("transfer in eval mode")
+        model.eval()
+    else:
+        model.train()
     printer = Printer()
     pbar = tqdm(range(args.epochs), total=args.epochs)
     for epoch in pbar:
@@ -131,7 +134,7 @@ def main() -> None:
 
     best_acc = 0
     start_epoch = 0
-    if args.resume:
+    if args.resume or args.transfer:
         # Load checkpoint.
         print('==> Resuming from checkpoint..')
         assert os.path.isfile(args.checkpoint), 'Checkpoint not found!'
@@ -139,14 +142,15 @@ def main() -> None:
         model.load_state_dict(checkpoint['model'])
         best_acc = checkpoint['acc']
         start_epoch = checkpoint['epoch']
-        for params in model.parameters():
-            params.requires_grad = False
-        if args.multigpu:
-            for params in model.module.linear.parameters():
-                params.requires_grad_()
-        else:
-            for params in model.linear.parameters():
-                params.requires_grad_()
+        if args.transfer:
+            for params in model.parameters():
+                params.requires_grad = False
+            if args.multigpu:
+                for params in model.module.linear.parameters():
+                    params.requires_grad_()
+            else:
+                for params in model.linear.parameters():
+                    params.requires_grad_()
 
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.SGD(filter(lambda x: x.requires_grad, model.parameters()),
@@ -169,6 +173,8 @@ def main() -> None:
     else:
         trainloader, testloader = trainloader1, testloader1
     train(args, model, trainloader, criterion, optimizer, step_lr)
+    if args.pretrain:
+        result = test(args, model, testloader1, criterion)
     result = test(args, model, testloader, criterion)
     save_model(args, model, result.acc(), start_epoch + args.epochs)
 
