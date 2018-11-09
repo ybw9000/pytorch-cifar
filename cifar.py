@@ -206,3 +206,19 @@ class ImbalancedCifar(CIFAR10):
         tgts = np.array(self.targets)
         self.data = np.vstack([self.data[tgts == i][idx[i]] for i in range(10)])
         self.targets = list(np.hstack([tgts[tgts == i][idx[i]] for i in range(10)]))
+
+
+class CifarN(CIFAR10):
+
+    def __init__(self, root, train=True,
+                 transform=None, target_transform=None,
+                 download=False, N=8):
+        super().__init__(root, train=train, transform=transform,
+                         target_transform=target_transform, download=download)
+        self._split_data(N)
+
+    def _split_data(self, N):
+        tgts = np.array(self.targets)
+        mask = tgts < N if N >= 0 else tgts >= - N
+        self.data = self.data[mask]
+        self.targets = list(tgts[mask] + (N if N < 0 else 0))

@@ -9,7 +9,7 @@ from torch.optim.lr_scheduler import StepLR
 from torch.utils.data import DataLoader
 
 import torchvision.transforms as transforms
-from cifar import ImbalancedCifar
+from cifar import CifarN
 from tqdm import tqdm
 
 import os
@@ -20,6 +20,7 @@ from utils import get_args, Printer, get_param_size
 
 
 def train(args, model, trainloader, criterion, optimizer, scheduler) -> None:
+    """All arguments are assumed to be immutable inside train function."""
     if args.transfer:
         print("transfer in eval mode")
         model.eval()
@@ -71,22 +72,23 @@ def save_model(args, model, acc: float, epoch: int) -> None:
     torch.save(state, args.model_path)
 
 
-def prepare_dataset(args, path: str, distribution: np.ndarray,
-                    percentage: float) -> tuple:
+def prepare_dataset(args, path: str) -> tuple:
     # classes = ('plane', 'car', 'bird', 'cat', 'deer',
     #            'dog', 'frog', 'horse', 'ship', 'truck')
     print('==> Preparing data..')
+    split = args.split
 
-    def prepare_dataloader(transform, idx: list, train: bool) -> DataLoader:
-        trainset = ImbalancedCifar(root=path, train=train, download=True,
-                                   transform=transform, idx=idx)
+    def prepare_dataloader(transform, split: int, train: bool) -> DataLoader:
+        trainset = CifarN(root=path, train=train, download=True,
+                          transform=transform, N=split)
         trainloader = DataLoader(
-            trainset, batch_size=args.batch_size, shuffle=train, num_workers=2)
+            trainset, batch_size=args.batch_size, shuffle=train, num_workers=4)
         return trainloader
 
     transform_test = transforms.Compose([
         transforms.ToTensor(),
-        transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
+        transforms.Normalize((0.4914, 0.4822, 0.4465),
+                             (0.2023, 0.1994, 0.2010)),
     ])
     transform_train = transforms.Compose([
         transforms.RandomCrop(32, padding=4),
@@ -94,18 +96,11 @@ def prepare_dataset(args, path: str, distribution: np.ndarray,
         transform_test
     ])
 
-    # Generate indexes to split the datasets into two parts
-    train_idx1, train_idx2 = ImbalancedCifar.generate_idx(
-        distribution=distribution*percentage*2, samples=5000)
-    # print(list(map(len, train_idx1)), list(map(len, train_idx2)))
-    test_idx1, test_idx2 = ImbalancedCifar.generate_idx(
-        distribution=distribution, samples=1000)
-    # print(list(map(len, test_idx1)), list(map(len, test_idx2)))
     arguments = [
-        [transform_train, train_idx1, True],
-        [transform_train, train_idx2, True],
-        [transform_test, test_idx1, False],
-        [transform_test, test_idx2, False]
+        [transform_train, split, True],
+        [transform_train, -split, True],
+        [transform_test, split, False],
+        [transform_test, -split, False]
     ]
     dataloaders = map(lambda x: prepare_dataloader(*x), arguments)
 
@@ -124,15 +119,14 @@ def main() -> None:
     }
     assert args.device == 'cpu' or torch.cuda.is_available(), 'gpu unavailable'
 
-    model = model_zoo[args.model]().to(args.device)
-    print(model)
-    print("Total number of parameters: ", get_param_size(model))
+    N = args.split
+    model = model_zoo[args.model]()
+    model.linear = nn.Linear(in_features=128, out_features=N)
 
     if args.multigpu:
         model = torch.nn.DataParallel(model)
         cudnn.benchmark = True
 
-    best_acc = 0
     start_epoch = 0
     if args.resume or args.transfer:
         # Load checkpoint.
@@ -140,41 +134,38 @@ def main() -> None:
         assert os.path.isfile(args.checkpoint), 'Checkpoint not found!'
         checkpoint = torch.load(args.checkpoint)
         model.load_state_dict(checkpoint['model'])
-        best_acc = checkpoint['acc']
         start_epoch = checkpoint['epoch']
         if args.transfer:
             for params in model.parameters():
                 params.requires_grad = False
-            if args.multigpu:
-                for params in model.module.linear.parameters():
-                    params.requires_grad_()
-            else:
-                for params in model.linear.parameters():
-                    params.requires_grad_()
+            # requires_grad is True by default for newly init layers/modules
+            model.linear = nn.Linear(in_features=128, out_features=10 - N)
 
-    criterion = nn.CrossEntropyLoss()
-    optimizer = optim.SGD(filter(lambda x: x.requires_grad, model.parameters()),
-                          lr=args.lr, momentum=0.9, weight_decay=5e-4)
-    step_lr = StepLR(optimizer=optimizer, step_size=args.decay_step,
-                     gamma=args.gamma)
-
-    np.random.seed(3)
-    distribution = np.random.rand(10)
-    print("Unbalanced distribution:", distribution, sep='\n')
-
-    dataloaders = prepare_dataset(
-        args, path='./data', distribution=distribution, percentage=0.1)
+    dataloaders = prepare_dataset(args, path='./data')
     trainloader1, trainloader2, testloader1, testloader2 = dataloaders
-    print('smartrain: {}\npretrain:{}\nsmartest: {}\npretest: {}'.format(
+    print('pretrain: {}\nsmartrain:{}\npretest: {}\nsmartest: {}'.format(
         *map(lambda x: str(len(x)) + ' batches', dataloaders)))
 
     if args.pretrain:
-        trainloader, testloader = trainloader2, testloader2
-    else:
         trainloader, testloader = trainloader1, testloader1
+    else:
+        trainloader, testloader = trainloader2[:1000], testloader2[:1000]
+
+    # Prepare trainer utils
+    criterion = nn.CrossEntropyLoss()
+    # model are assumed to freeze before setting optimizer
+    optimizer = optim.SGD(
+        filter(lambda x: x.requires_grad, model.parameters()),
+        lr=args.lr, momentum=0.9, weight_decay=5e-4)
+    step_lr = StepLR(optimizer=optimizer, step_size=args.decay_step,
+                     gamma=args.gamma)
+
+    # Set/print model states
+    model.to(args.device)
+    print(model)
+    print("Total number of parameters: ", get_param_size(model))
+
     train(args, model, trainloader, criterion, optimizer, step_lr)
-    if args.pretrain:
-        result = test(args, model, testloader1, criterion)
     result = test(args, model, testloader, criterion)
     save_model(args, model, result.acc(), start_epoch + args.epochs)
 

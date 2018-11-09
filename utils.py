@@ -42,6 +42,8 @@ def get_args():
                         help='turn on multi gpu')
     parser.add_argument('--model', default='resnet18', type=str,
                         help='which model to use')
+    parser.add_argument('--split', default=5, type=int,
+                        help='how to split the dataset, default 5 to 5')
     args = parser.parse_args()
 
     return args
