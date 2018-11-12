@@ -102,6 +102,14 @@ class ResNet(nn.Module):
         return out
 
 
+def ResNet2():
+    return ResNet(BasicBlock, [])
+
+
+def ResNet4():
+    return ResNet(BasicBlock, [1])
+
+
 def ResNet6():
     return ResNet(BasicBlock, [1, 1])
 

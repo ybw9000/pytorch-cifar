@@ -151,6 +151,7 @@ def main() -> None:
     print(model)
     print("Total number of parameters: ", get_param_size(model))
 
+    test(args, model, testloader, criterion)
     train(args, model, trainloader, criterion, optimizer, step_lr)
     result = test(args, model, testloader, criterion)
     save_model(args, model, result.acc(), start_epoch + args.epochs)
