@@ -69,6 +69,9 @@ def save_model(args, model, acc: float, epoch: int) -> None:
         'acc': acc,
         'epoch': epoch
     }
+    dir = '/'.join(args.model_path.split('/')[:-1])
+    if not os.path.isdir(dir):
+        os.mkdir(dir)
     torch.save(state, args.model_path)
 
 
@@ -142,7 +145,7 @@ def main() -> None:
     # model are assumed to freeze before setting optimizer
     optimizer = optim.SGD(
         filter(lambda x: x.requires_grad, model.parameters()),
-        lr=args.lr, momentum=0.9, weight_decay=5e-4)
+        lr=args.lr, momentum=args.momentum, weight_decay=args.L2)
     step_lr = StepLR(optimizer=optimizer, step_size=args.decay_step,
                      gamma=args.gamma)
 

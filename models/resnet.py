@@ -21,19 +21,19 @@ class BasicBlock(nn.Module):
         self.conv2 = nn.Conv2d(planes, planes, kernel_size=3, stride=1, padding=1, bias=False)
         # self.bn2 = nn.BatchNorm2d(planes)
 
-        self.shortcut = nn.Sequential()
-        if stride != 1 or in_planes != self.expansion*planes:
-            self.shortcut = nn.Sequential(
-                nn.Conv2d(in_planes, self.expansion*planes, kernel_size=1, stride=stride, bias=False),
-                # nn.BatchNorm2d(self.expansion*planes)
-            )
+        # self.shortcut = nn.Sequential()
+        # if stride != 1 or in_planes != self.expansion*planes:
+        #     self.shortcut = nn.Sequential(
+        #         nn.Conv2d(in_planes, self.expansion*planes, kernel_size=1, stride=stride, bias=False),
+        #         # nn.BatchNorm2d(self.expansion*planes)
+        #     )
 
     def forward(self, x):
         # out = F.relu(self.bn1(self.conv1(x)))
         # out = self.bn2(self.conv2(out))
         out = F.relu(self.conv1(x))
         out = self.conv2(out)
-        out += self.shortcut(x)
+        # out += self.shortcut(x)
         out = F.relu(out)
         return out
 
@@ -82,6 +82,7 @@ class ResNet(nn.Module):
             layer = self._make_layer(block, plane, n, stride)
             res_layers.append(layer)
         self.resnet = nn.Sequential(*res_layers)
+        self.pool = nn.AdaptiveAvgPool2d(1)
         self.linear = nn.Linear(plane*block.expansion, num_classes)
 
     def _make_layer(self, block, planes, num_blocks, stride):
@@ -96,7 +97,8 @@ class ResNet(nn.Module):
         # out = F.relu(self.bn1(self.conv1(x)))
         out = F.relu(self.conv1(x))
         out = self.resnet(out)
-        out = F.avg_pool2d(out, 32//(2**len(self.resnet)))
+        # out = F.avg_pool2d(out, 8)
+        out = self.pool(out)
         out = out.view(out.size(0), -1)
         out = self.linear(out)
         return out

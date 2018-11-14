@@ -30,8 +30,8 @@ def get_args():
                         help='print results per p epochs')
     parser.add_argument('-ds', '--decay_step', default=50, type=int,
                         help='learning rate decays by every ds epochs')
-    parser.add_argument('--gamma', default=0.1, type=float,
-                        help='learning rate decay rate')
+    parser.add_argument('--gamma', default=1.0, type=float,
+                        help='learning rate decay rate, default no decay')
     parser.add_argument('--device', default='cpu', type=str,
                         help='use gpu or cpu')
     parser.add_argument('--model_path', default='checkpoint/best_model',
@@ -44,6 +44,10 @@ def get_args():
                         help='how to split the dataset, default 5 to 5')
     parser.add_argument('--smi_size', default=1000, type=int,
                         help='how many images used for smart inference')
+    parser.add_argument('--momentum', default=0.9, type=float,
+                        help='SGD momentum')
+    parser.add_argument('--L2', default=5e-4, type=float,
+                        help='L2 decay')
     args = parser.parse_args()
 
     return args
