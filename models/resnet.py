@@ -1,11 +1,9 @@
-'''ResNet in PyTorch.
+"""
+Model borrowed from torchvision resnet. BatchNorm and skip connections are
+commented out due to incompleteness and bugs in Spatial implementation.
+"""
 
-For Pre-activation ResNet, see 'preact_resnet.py'.
 
-Reference:
-[1] Kaiming He, Xiangyu Zhang, Shaoqing Ren, Jian Sun
-    Deep Residual Learning for Image Recognition. arXiv:1512.03385
-'''
 import torch.nn as nn
 import torch.nn.functional as F
 
@@ -83,8 +81,7 @@ class ResNet(nn.Module):
         plane = 32
         for i, n in enumerate(num_blocks):
             plane *= 2
-            stride = 2 if i == 0 else 2
-            layer = self._make_layer(block, plane, n, stride)
+            layer = self._make_layer(block, plane, n, 2)
             res_layers.append(layer)
         self.resnet = nn.Sequential(*res_layers)
         self.pool = nn.AdaptiveAvgPool2d(1)
