@@ -86,6 +86,7 @@ class ResNet(nn.Module):
         self.resnet = nn.Sequential(*res_layers)
         self.pool = nn.AdaptiveAvgPool2d(1)
         self.linear = nn.Linear(plane*block.expansion, num_classes)
+        self.lsm = nn.LogSoftmax(dim=1)
 
     def _make_layer(self, block, planes, num_blocks, stride):
         strides = [stride] + [1]*(num_blocks-1)
@@ -99,10 +100,10 @@ class ResNet(nn.Module):
         # out = F.relu(self.bn1(self.conv1(x)))
         out = F.relu(self.conv1(x))
         out = self.resnet(out)
-        # out = F.avg_pool2d(out, 8)
         out = self.pool(out)
         out = out.view(out.size(0), -1)
         out = self.linear(out)
+        out = self.lsm(out)
         return out
 
 

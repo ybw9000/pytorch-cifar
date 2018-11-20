@@ -64,7 +64,7 @@ def save_model(args, model, acc: float, epoch: int) -> None:
         warnings.warn(message="Model already exists, overwriting models..")
     print(f'Saving model to {args.model_path}')
     state = {
-        'model': model.state_dict(),
+        'model': model.to('cpu').state_dict(),
         'num_paras': get_param_size(model),
         'acc': acc,
         'epoch': epoch
@@ -143,7 +143,7 @@ def main() -> None:
         *map(lambda x: str(len(x)) + ' batches', dataloaders)))
 
     # Prepare trainer utils
-    criterion = nn.CrossEntropyLoss()
+    criterion = nn.NLLLoss()
     # model are assumed to freeze before setting optimizer
     optimizer = optim.SGD(
         filter(lambda x: x.requires_grad, model.parameters()),
