@@ -42,8 +42,10 @@ def get_args():
                         help='which model to use')
     parser.add_argument('--split', default=5, type=int,
                         help='how to split the dataset, default 5 to 5')
+    parser.add_argument('--ratio', default=0.9, type=float,
+                        help='how many images used for pretrain')
     parser.add_argument('--smi_size', default=1000, type=int,
-                        help='how many images used for smart inference')
+                        help='how many images used for smart_inference')
     parser.add_argument('--momentum', default=0.9, type=float,
                         help='SGD momentum')
     parser.add_argument('--L2', default=5e-4, type=float,
