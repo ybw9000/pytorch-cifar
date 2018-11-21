@@ -216,24 +216,12 @@ class CifarN(CIFAR10):
         super().__init__(root, train=train, transform=transform,
                          target_transform=target_transform, download=download)
         self.args = args
-        self._split_data()
+        self._filter_data()
 
-    def _split_data(self):
-        # np.random.seed(256)
-        # idxs = np.random.permutation(len(self.data))
-        # self.data = self.data[idxs]
-        tgts = np.array(self.targets)
-
-        N = self.args.split
-        pretrain_ratio = self.args.ratio
-        pretrain_num = int(len(self.data)*pretrain_ratio)
-        smi_size = self.args.smi_size
-
-        if self.args.transfer:
-            mask = (tgts[pretrain_num:] >= N)
-            self.data = self.data[pretrain_num:][mask][:smi_size]
-            self.targets = list(tgts[pretrain_num:][mask][:smi_size])
-        else:
-            mask = (tgts[:pretrain_num] < N)
-            self.data = self.data[:pretrain_num][mask]
-            self.targets = list(tgts[:pretrain_num][mask])
+    def _filter_data(self):
+        if self.args.pretrain:
+            tgts = np.array(self.targets)
+            N = self.args.split
+            mask = (tgts >= N)
+            self.data = self.data[mask]
+            self.targets = list(tgts[mask])

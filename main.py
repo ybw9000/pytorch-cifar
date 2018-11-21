@@ -134,8 +134,6 @@ def main() -> None:
                 params.requires_grad = False
             for params in model.linear.parameters():
                 params.requires_grad = True
-                # If necessary, reinit the last linear layer
-                # nn.init.uniform(params)
 
     dataloaders = prepare_dataset(args, path='./data')
     trainloader, testloader = dataloaders
