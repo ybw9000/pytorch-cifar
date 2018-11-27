@@ -28,6 +28,7 @@ def train(args, model, trainloader, criterion, optimizer, scheduler) -> None:
         model.train()
     printer = Printer()
     pbar = tqdm(range(args.epochs), total=args.epochs)
+    acc_history, loss_history = [], []
     for epoch in pbar:
         scheduler.step()
         for batch_idx, (inputs, targets) in enumerate(trainloader):
@@ -38,9 +39,16 @@ def train(args, model, trainloader, criterion, optimizer, scheduler) -> None:
             loss.backward()
             optimizer.step()
             printer.update(loss, outputs, targets)
+            acc_history.append(printer.acc())
+            loss_history.append(printer.loss())
 
         # if epoch % args.print == 0:
         pbar.set_description(f'Epoch: {epoch}, {printer}')
+    dir = args.model_path[:-4]
+    acc_path = dir + '_acc_history.txt'
+    loss_path = dir + '_loss_history.txt'
+    np.savetxt(X=np.array(acc_history), fname=acc_path)
+    np.savetxt(X=np.array(loss_history), fname=loss_path)
 
 
 def test(args, model, testloader, criterion) -> Printer:

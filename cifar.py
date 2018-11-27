@@ -222,6 +222,6 @@ class CifarN(CIFAR10):
         if self.args.pretrain:
             tgts = np.array(self.targets)
             N = self.args.split
-            mask = (tgts >= N)
+            mask = (tgts < N)
             self.data = self.data[mask]
             self.targets = list(tgts[mask])
