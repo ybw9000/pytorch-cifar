@@ -1,5 +1,6 @@
 '''Train CIFAR10 with PyTorch.'''
 import numpy as np
+import time
 
 import torch
 import torch.nn as nn
@@ -26,9 +27,11 @@ def train(args, model, trainloader, criterion, optimizer, scheduler) -> None:
     else:
         model.train()
     printer = Printer()
-    pbar = tqdm(range(args.epochs), total=args.epochs)
+    total_iter = args.epochs * len(trainloader)
+    pbar = tqdm(range(total_iter), total=total_iter)
+    pbar_itr = iter(pbar)
     acc_history, loss_history = [], []
-    for epoch in pbar:
+    for epoch in range(args.epochs):
         scheduler.step()
         for batch_idx, (inputs, targets) in enumerate(trainloader):
             inputs, targets = inputs.to(args.device), targets.to(args.device)
@@ -37,12 +40,18 @@ def train(args, model, trainloader, criterion, optimizer, scheduler) -> None:
             loss = criterion(outputs, targets)
             loss.backward()
             optimizer.step()
+            count = next(pbar_itr)
+            if args.transfer:
+                if count > 200:
+                    time.sleep(0.1)
+                else:
+                    continue
             printer.update(loss, outputs, targets)
             acc_history.append(printer.acc())
             loss_history.append(printer.loss())
 
-        # if epoch % args.print == 0:
-        pbar.set_description(f'Epoch: {epoch}, {printer}')
+            # if epoch % args.print == 0:
+            pbar.set_description(f'Epoch: {epoch}, {printer}')
     dir = args.model_path[:-4]
     acc_path = dir + '_acc_history.txt'
     loss_path = dir + '_loss_history.txt'
@@ -123,6 +132,7 @@ def main() -> None:
         'resnet10': ResNet10,
         'resnet8': ResNet8,
         'resnet6': ResNet6,
+        'resnet4': ResNet4,
     }
     assert args.device == 'cpu' or torch.cuda.is_available(), 'gpu unavailable'
 
@@ -161,7 +171,7 @@ def main() -> None:
     print(model)
     print("Total number of parameters: ", get_param_size(model))
 
-    test(args, model, testloader, criterion)
+    # test(args, model, testloader, criterion)
     train(args, model, trainloader, criterion, optimizer, step_lr)
     result = test(args, model, testloader, criterion)
     save_model(args, model, result.acc(), start_epoch + args.epochs)

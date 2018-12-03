@@ -16,7 +16,7 @@ class BasicBlock(nn.Module):
         self.conv1 = nn.Conv2d(in_planes, planes, kernel_size=3, stride=stride,
                                padding=1, bias=False)
         # self.bn1 = nn.BatchNorm2d(planes)
-        self.conv2 = nn.Conv2d(planes, planes, kernel_size=3, stride=1,
+        self.conv2 = nn.Conv2d(planes, planes, kernel_size=3, stride=2,
                                padding=1, bias=False)
         # self.bn2 = nn.BatchNorm2d(planes)
 
@@ -74,7 +74,7 @@ class ResNet(nn.Module):
         super(ResNet, self).__init__()
         self.in_planes = 32
 
-        self.conv1 = nn.Conv2d(3, self.in_planes, kernel_size=3, stride=1,
+        self.conv1 = nn.Conv2d(3, self.in_planes, kernel_size=3, stride=2,
                                padding=1, bias=False)
         # self.bn1 = nn.BatchNorm2d(self.in_planes)
         res_layers = []
